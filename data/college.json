@@ -1,0 +1,37 @@
+[
+    {
+        "image" : "https://sociology.fas.harvard.edu/sites/hwpi.harvard.edu/files/styles/os_files_xxlarge/public/sociology/files/gsmhtrso.jpeg?m=1570480669&itok=oSVsvX-y",
+        "college_name": "Harvard University",
+        "college_image": "https://images.shiksha.com/mediadata/images/1549964678phpqbJKyb.jpeg"
+        
+    },
+    {
+        "image" : "https://ed.stanford.edu/sites/default/files/styles/max_width_-_1200px/public/news/image/group2-cropped_0.jpg?itok=Z2n3UGOC",
+        "college_name": "Stanford University",
+        "college_image": "https://images.shiksha.com/mediadata/images/1548670089phpmuzoiS.png"
+       
+    },
+    {
+        "image" : "https://registrar.mit.edu/sites/default/files/styles/page_header_1x_wide/public/graduation_banner_22.jpg?itok=o1pqfIb5",
+        "college_name": "MIT University",
+        "college_image": "https://images.shiksha.com/mediadata/images/1549964733phpPobSz8.png"
+       
+    },
+    {
+        "image" : "https://www.telegraph.co.uk/content/dam/news/2017/07/27/TELEMMGLPICT000134831506_trans_NvBQzQNjv4Bq-b8lvYeT7ebSRCv1_WuiyZxyMIXv-_LrUI31icGh_SI.jpeg?imwidth=1280",
+        "college_name": "University of Oxford",
+        "college_image": "https://images.shiksha.com/mediadata/images/1550051704phpkJH3HM.jpeg"
+        
+    },
+    {
+        "image" : "https://www.imperial.ac.uk/ImageCropToolT4/imageTool/uploaded-images/newseventsimage_1646844088620_mainnews2012_x1.jpg",
+        "college_name": "Imperial College London",
+        "college_image": "https://images.shiksha.com/mediadata/images/1549860827phpS6YEfG.png"
+       
+    },
+    {
+        "image" : "https://www.emma.cam.ac.uk/images/life/graduation%20.jpg",
+        "college_name": "University of Cambridge",
+        "college_image": "https://images.shiksha.com/mediadata/images/1549867867phpNHPszN.png"
+    }
+]
