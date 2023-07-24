@@ -4,9 +4,9 @@ const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const graduate = require("./data/college.json")
 app.use(cors())
 app.use(express.json())
+const graduate = require("./data/college.json")
 
 
 
@@ -30,6 +30,7 @@ async function run() {
     
     const university = client.db("admitHub").collection("universities");
     const userCollection = client.db("admitHub").collection("users");
+    const reviewsCollection = client.db("admitHub").collection("reviews");
 
     app.get("/university", async (req, res) => {
       const search = req.query.search;
@@ -49,6 +50,11 @@ async function run() {
       res.send(result)
     })
 
+    app.get("/reviews", async (req, res) => {
+      const result = await reviewsCollection.find().toArray();
+      res.send(result)
+    })
+
 
     app.get("/admission", async (req, res) => {
       const result = await university.find().project({college_name:1, college_image:1 }).toArray();
@@ -63,7 +69,6 @@ async function run() {
     })
 
     app.get("/research", async (req, res) => {
-
       const result = await university.find().project({college_name:1, college_image:1 , research_works:1}).toArray();
       res.send(result)
     })
@@ -94,6 +99,19 @@ async function run() {
     const result = await userCollection.findOne(query);
     res.send(result);
   })
+
+  app.get("/reviewdata/:id",  async (req, res) => {
+    const id = req.params.id;
+    const query = {_id: new ObjectId(id)}
+    const result = await userCollection.findOne(query);
+    res.send(result);
+  })
+
+  app.post("/reviews",async(req,res)=> {
+    const review = req.body;
+    const result = await reviewsCollection.insertOne(review);
+    res.send(result);
+})
 
 
   app.patch("/collegeAdmission", async (req, res) => {
@@ -145,9 +163,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-
-
 
 app.get("/graduate",(req,res)=>{
   res.send(graduate);
