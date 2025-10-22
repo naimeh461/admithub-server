@@ -147,11 +147,19 @@ async function run() {
     })
 
     app.get("/admissiondata/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
-      const result = await university.findOne(query);
-      res.send(result)
-    })
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ error: true, message: "Invalid id" });
+        }
+        const query = { _id: new ObjectId(id) };
+        const result = await university.findOne(query);
+        res.send(result);
+      } catch (err) {
+        console.error("admissiondata error:", err);
+        res.status(500).send({ error: true, message: "Server error" });
+      }
+    });
 
     app.get("/research", async (req, res) => {
       const result = await university.find().project({ college_name: 1, college_image: 1, research_works: 1 }).toArray();
@@ -254,6 +262,16 @@ async function run() {
       }
     });
 
+    app.get('/admin/admissions', verifyJWT, verifyAdmin, async (req, res) => {
+      try {
+        const admissions = await admissionUniversity.find().toArray();
+        res.send({ success: true, admissions });
+      } catch (err) {
+        console.error('Error fetching admin admissions:', err);
+        res.status(500).send({ error: true, message: 'Failed to fetch admissions' });
+      }
+    });
+
     app.patch("/updateProfile/:email", verifyJWT, async (req, res) => {
       try {
         const emailParam = req.params.email;
@@ -330,6 +348,151 @@ async function run() {
         return res.status(500).send({ paid: false });
       }
     })
+
+    app.post('/admin/university', verifyJWT, verifyAdmin, async (req, res) => {
+      try {
+        const doc = req.body;
+        if (!doc || !doc.college_name) {
+          return res.status(400).send({ success: false, message: "college_name is required" });
+        }
+
+        // Normalize some fields
+        doc.college_rating = doc.college_rating ? Number(doc.college_rating) : 0;
+        doc.number_of_research = doc.number_of_research ? Number(doc.number_of_research) : 0;
+        doc.createdAt = new Date();
+
+        const result = await university.insertOne(doc);
+        res.send({ success: true, insertedId: result.insertedId });
+      } catch (err) {
+        console.error('Error inserting university:', err);
+        res.status(500).send({ success: false, message: 'Failed to add university' });
+      }
+    });
+
+    app.get('/admin/payments', verifyJWT, verifyAdmin, async (req, res) => {
+      try {
+        const payments = await paymentsCollection.find().toArray();
+        res.send({ success: true, payments });
+      } catch (err) {
+        console.error('Error fetching payments for admin:', err);
+        res.status(500).send({ error: true, message: 'Failed to fetch payments' });
+      }
+    });
+
+    app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
+      try {
+        // omit sensitive fields if any (e.g. password)
+        const users = await userCollection.find().project({ password: 0 }).toArray();
+        res.send({ success: true, users });
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        res.status(500).send({ error: true, message: 'Failed to fetch users' });
+      }
+    });
+
+    // GET single user by id (admin only)
+    app.get('/users/:id', verifyJWT, verifyAdmin, async (req, res) => {
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) return res.status(400).send({ error: true, message: 'Invalid id' });
+
+        const user = await userCollection.findOne(
+          { _id: new ObjectId(id) },
+          { projection: { password: 0 } } // hide password
+        );
+
+        res.send({ success: true, user: user || null });
+      } catch (err) {
+        console.error('Error fetching user:', err);
+        res.status(500).send({ error: true, message: 'Failed to fetch user' });
+      }
+    });
+
+    // PATCH change role (admin only)
+    app.patch('/users/role/:id', verifyJWT, verifyAdmin, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { role } = req.body;
+
+        if (!ObjectId.isValid(id)) return res.status(400).send({ error: true, message: 'Invalid id' });
+        if (!role || typeof role !== 'string') return res.status(400).send({ error: true, message: 'Role is required' });
+
+        // optional: restrict allowed roles
+        const allowed = ['admin', 'student']; // add more roles if needed
+        if (!allowed.includes(role)) return res.status(400).send({ error: true, message: 'Invalid role' });
+
+        const result = await userCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { role } }
+        );
+
+        if (result.matchedCount === 0) return res.status(404).send({ error: true, message: 'User not found' });
+
+        res.send({ success: true, modifiedCount: result.modifiedCount });
+      } catch (err) {
+        console.error('Error updating user role:', err);
+        res.status(500).send({ error: true, message: 'Failed to update role' });
+      }
+    });
+
+    app.patch('/admin/admissions/:id/status', verifyJWT, verifyAdmin, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { status, reason } = req.body;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ error: true, message: 'Invalid id' });
+        }
+
+        const allowed = ['pending', 'approved', 'rejected'];
+        if (!allowed.includes(status)) {
+          return res.status(400).send({ error: true, message: 'Invalid status' });
+        }
+
+        const updateDoc = {
+          $set: {
+            status,
+            updatedAt: new Date(),
+          },
+        };
+
+        // If rejected, store the reason in a clear field
+        if (status === 'rejected') {
+          updateDoc.$set.rejectionReason = reason ? String(reason).trim() : '';
+        } else {
+          // remove previous rejectionReason when approving/pending
+          updateDoc.$unset = { rejectionReason: "" };
+        }
+
+        const result = await admissionUniversity.updateOne(
+          { _id: new ObjectId(id) },
+          updateDoc
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ error: true, message: 'Admission not found' });
+        }
+
+        res.send({ success: true, modifiedCount: result.modifiedCount });
+      } catch (err) {
+        console.error('Error updating admission status:', err);
+        res.status(500).send({ error: true, message: 'Failed to update admission status' });
+      }
+    });
+
+    // Optional: GET single admission for admin
+    app.get('/admin/admissions/:id', verifyJWT, verifyAdmin, async (req, res) => {
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) return res.status(400).send({ error: true, message: 'Invalid id' });
+        const admission = await admissionUniversity.findOne({ _id: new ObjectId(id) });
+        res.send({ success: true, admission });
+      } catch (err) {
+        console.error('Error fetching admission:', err);
+        res.status(500).send({ error: true, message: 'Failed to fetch admission' });
+      }
+    });
+
     // Connect the client to the server	(optional starting in v4.7)
     app.get('/admissions', verifyJWT, async (req, res) => {
       try {
@@ -352,13 +515,9 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
-    // Ensures that the client will close when you finish/error
-    //await client.close();
+
   }
 
-  // ...existing code...
-  // Get admissions for the authenticated user
-  // ...existing code...
 }
 run().catch(console.dir);
 
